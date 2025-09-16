@@ -1,0 +1,125 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2639
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;\f1\fnil\fcharset0 AppleColorEmoji;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 <!DOCTYPE html>\
+<html lang="en">\
+<head>\
+  <meta charset="UTF-8">\
+  <title>Trip Planner Test</title>\
+  <style>\
+    body \{\
+      font-family: Arial, sans-serif;\
+      margin: 40px;\
+      background: #f4f4f9;\
+    \}\
+    h1 \{\
+      text-align: center;\
+      color: #2e7d32;\
+    \}\
+    form \{\
+      max-width: 500px;\
+      margin: auto;\
+      padding: 20px;\
+      background: white;\
+      border-radius: 8px;\
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);\
+    \}\
+    label \{\
+      display: block;\
+      margin: 10px 0 5px;\
+      font-weight: bold;\
+    \}\
+    input, select, button \{\
+      width: 100%;\
+      padding: 10px;\
+      margin-bottom: 15px;\
+      border-radius: 4px;\
+      border: 1px solid #ccc;\
+      font-size: 14px;\
+    \}\
+    button \{\
+      background: #2e7d32;\
+      color: white;\
+      border: none;\
+      font-weight: bold;\
+      cursor: pointer;\
+      transition: background 0.3s ease;\
+    \}\
+    button:hover \{\
+      background: #1b5e20;\
+    \}\
+    #planResult \{\
+      max-width: 700px;\
+      margin: 30px auto;\
+      padding: 20px;\
+      background: white;\
+      border-radius: 8px;\
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);\
+      line-height: 1.6;\
+    \}\
+    strong \{\
+      color: #2e7d32;\
+    \}\
+  </style>\
+</head>\
+<body>\
+  <h1>AI Trip Planner</h1>\
+  <form id="plannerForm">\
+    <label for="destination">Destination</label>\
+    <input type="text" name="destination" required>\
+\
+    <label for="start_date">Start Date</label>\
+    <input type="date" name="start_date" required>\
+\
+    <label for="days">Number of Days</label>\
+    <input type="number" name="days" min="1" max="30" required>\
+\
+    <label for="experience">Experience Level</label>\
+    <select name="experience" required>\
+      <option>Beginner</option>\
+      <option>Intermediate</option>\
+      <option>Advanced</option>\
+    </select>\
+\
+    <button type="submit">Generate Plan</button>\
+  </form>\
+\
+  <div id="planResult"></div>\
+\
+  <script>\
+    document.getElementById("plannerForm").addEventListener("submit", async (e) => \{\
+      e.preventDefault();\
+      const formData = Object.fromEntries(new FormData(e.target));\
+      const resultDiv = document.getElementById("planResult");\
+      resultDiv.innerText = "
+\f1 \uc0\u9203 
+\f0  Generating your plan...";\
+\
+      try \{\
+        const res = await fetch("http://localhost:3000/api/plan", \{\
+          method: "POST",\
+          headers: \{ "Content-Type": "application/json" \},\
+          body: JSON.stringify(formData)\
+        \});\
+        const data = await res.json();\
+\
+        // format response (convert \\n to <br> and **bold** to <strong>)\
+        let formatted = data.plan\
+          .replace(/\\\\n/g, "<br>")\
+          .replace(/\\*\\*(.*?)\\*\\*/g, "<strong>$1</strong>");\
+\
+        resultDiv.innerHTML = formatted;\
+      \} catch (err) \{\
+        resultDiv.innerText = "
+\f1 \uc0\u10060 
+\f0  Error generating plan.";\
+      \}\
+    \});\
+  </script>\
+</body>\
+</html>\
+}
