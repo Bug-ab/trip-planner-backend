@@ -1,42 +1,71 @@
 import express from "express";
-import bodyParser from "body-parser";
-import OpenAI from "openai";
+import cors from "cors";
 import dotenv from "dotenv";
+import OpenAI from "openai";
 
 dotenv.config();
+
 const app = express();
-app.use(bodyParser.json());
+app.use(express.json());
 
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// ✅ Allow requests only from local dev + your deployed Vercel frontend
+const allowedOrigins = [
+  "http://localhost:5173", // local dev
+  "https://trip-planner-frontend-six.vercel.app" // vercel frontend
+];
 
-// Route for generating trip plans
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    methods: ["GET", "POST"],
+    credentials: true,
+  })
+);
+
+// ✅ Setup OpenAI client
+const client = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+// ✅ Trip planner API endpoint
 app.post("/api/plan", async (req, res) => {
-  const { destination, start_date, days, experience } = req.body;
-
-  const prompt = `
-  Create a detailed ${days}-day hiking & camping itinerary in ${destination}.
-  Start date: ${start_date}.
-  Experience level: ${experience}.
-  Include trail names, campsite recommendations, distances, difficulty levels,
-  and safety tips.
-  Format clearly day by day.
-  `;
-
   try {
+    const { destination, start_date, days, experience } = req.body;
+
+    if (!destination || !start_date || !days || !experience) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    const prompt = `Create a detailed ${days}-day hiking and camping itinerary for ${destination}, 
+    starting on ${start_date}, for a ${experience} level hiker. 
+    Include daily schedule, trail names, distances, difficulty, safety tips, and camping recommendations.`;
+
     const response = await client.chat.completions.create({
       model: "gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.7
+      messages: [
+        { role: "system", content: "You are a helpful trip planner." },
+        { role: "user", content: prompt },
+      ],
     });
 
-    res.json({ plan: response.choices[0].message.content });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to generate plan" });
+    const plan = response.choices[0].message.content;
+
+    res.json({ plan });
+  } catch (error) {
+    console.error("Error generating itinerary:", error);
+    res.status(500).json({ error: "Failed to generate itinerary" });
   }
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`✅ Server running on http://localhost:${PORT}`));
-
+// ✅ Start server
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, () => {
+  console.log(`✅ Server running on http://localhost:${PORT}`);
+});
 
