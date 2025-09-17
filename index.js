@@ -1,39 +1,27 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import OpenAI from "openai";
+import fetch from "node-fetch";
 
 dotenv.config();
 
 const app = express();
-app.use(express.json());
 
-// ✅ Allow requests only from local dev + your deployed Vercel frontend
-const allowedOrigins = [
-  "http://localhost:5173", // local dev
-  "https://trip-planner-frontend-six.vercel.app" // vercel frontend
-];
-
+// ✅ Configure CORS
 app.use(
   cors({
-    origin: function (origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
+    origin: [
+      "http://localhost:5173",                         // local dev
+      "https://trip-planner-frontend-six.vercel.app", // deployed frontend
+    ],
     methods: ["GET", "POST"],
-    credentials: true,
+    allowedHeaders: ["Content-Type"],
   })
 );
 
-// ✅ Setup OpenAI client
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+app.use(express.json());
 
-// ✅ Trip planner API endpoint
+// ✅ Route: Generate Trip Itinerary
 app.post("/api/plan", async (req, res) => {
   try {
     const { destination, start_date, days, experience } = req.body;
@@ -42,30 +30,46 @@ app.post("/api/plan", async (req, res) => {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    const prompt = `Create a detailed ${days}-day hiking and camping itinerary for ${destination}, 
-    starting on ${start_date}, for a ${experience} level hiker. 
-    Include daily schedule, trail names, distances, difficulty, safety tips, and camping recommendations.`;
+    const prompt = `
+      Generate a detailed hiking and camping itinerary for ${days} day(s)
+      in ${destination}, starting on ${start_date}.
+      The experience level is ${experience}.
+      Provide times, activities, hiking trails, meal recommendations, and safety tips.
+    `;
 
-    const response = await client.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: "You are a helpful trip planner." },
-        { role: "user", content: prompt },
-      ],
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.7,
+      }),
     });
 
-    const plan = response.choices[0].message.content;
+    const data = await response.json();
+
+    if (data.error) {
+      console.error("OpenAI API error:", data.error);
+      return res.status(500).json({ error: "Failed to generate itinerary" });
+    }
+
+    const plan = data.choices[0].message.content;
 
     res.json({ plan });
   } catch (error) {
-    console.error("Error generating itinerary:", error);
-    res.status(500).json({ error: "Failed to generate itinerary" });
+    console.error("Server error:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// ✅ Start server
+// ✅ Start Server
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
-  console.log(`✅ Server running on http://localhost:${PORT}`);
+  console.log(`✅ Server running on port ${PORT}`);
 });
+
 
