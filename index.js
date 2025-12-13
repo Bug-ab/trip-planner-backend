@@ -27,41 +27,32 @@ const client = new OpenAI({
 // --------------------
 // API: Get hike options (NO itinerary yet)
 // --------------------
+// POST /api/hike-options
 app.post("/api/hike-options", async (req, res) => {
   try {
-    const { destination, days, experience } = req.body;
+    const { destination, days, experience } = req.body || {};
 
     if (!destination || !experience) {
-      return res.status(400).json({ error: "Missing required fields" });
+      return res.status(400).json({
+        error: "Missing required fields",
+        required: ["destination", "experience"],
+      });
     }
 
-    const prompt = `
-You are a Parks Canada hiking expert.
-
-Suggest 5 hiking trail OPTIONS near ${destination}.
-User experience level: ${experience}.
-Trip length: ${days} day(s).
-
-For each hike, include:
-- Trail name
-- Distance (km)
-- Elevation gain (m)
-- Difficulty
-- Why it is good for this experience level
-
-Return as a clear bullet list.
-`;
-
-    const completion = await client.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }],
-    });
-
+    // Return options array (what your frontend expects)
     res.json({
-      hikes: completion.choices[0].message.content,
+      options: [
+        {
+          id: "sample-1",
+          name: `${destination} Sample Trail`,
+          distance_km: 8.5,
+          elevation_m: 420,
+          difficulty: experience,
+        },
+      ],
     });
   } catch (error) {
-    console.error("Hike options error:", error.message);
+    console.error("Hike options error:", error);
     res.status(500).json({ error: "Failed to generate hike options" });
   }
 });
